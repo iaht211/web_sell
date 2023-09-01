@@ -1,0 +1,79 @@
+        Phân tích thiết kế database
+
+1) Bảng Role (quyền truy cập admin, người seler, customer)
+    - role_id: int -> khóa chính 
+    - name: varchar(20) 
+2) Bảng User
+    - user_id: int -> khóa chính 
+    - full_name: varchar(50)
+    - email: varchar(150)
+    - phone_number: varchar(20)
+    - address: varchar(20)
+    - password: varchar(50)
+    - role_id: int -> foreign key -> role(id)
+**  - created_at: time (thời gian tạo bản ghi)
+**  - updated_at: time (thời gian sửa bản ghi)
+    
+3) Bảng Danh Mục 
+    - category_id: int -> khóa chính 
+    - name: varchar(50) 
+    - description: varchar(500)
+4) Bảng Sản Phẩn
+    - product_id: int -> khóa chính
+    - category_id: int -> foreign key -> category(category_id)
+    - title: varchar(50)
+    - price: int
+    - discount: int
+    - thumnail: varchar(500)<!--  link picture of product -->
+    - description: varchar(500)
+    - created_at: time <!-- thời gian tạo sản phẩm -->
+    - updated_at: time <!--thời gian sửa sản phẩm-->
+5) Bảng Quản Lí Galery <!--quản lí hình ảnh thêm của sản phẩm-->
+    - galery: int -> khóa chính 
+    - product_id: int foreign key product(product_id)
+    - thumnail: varchar(500)
+6) Bảng FeedBack <!-- phản hồi lại trang web nếu có vấn đề xảy ra -->
+    feedBack_id: int khóa chính 
+    first_name: varchar(20)
+    last_name: varchar(20)
+    email: varchar(100) 
+    phone_number: varchar(20)
+    subject_name: varchar(100)
+    note: varchar(500)
+7) Quản Lí Đơn Hàng:
+    - id
+    -fullname
+    - email
+    - address
+    - note
+    - phone_number
+    -order_date : time -> thời điểm đặt hàng
+    - danh sách sản phẩm:
+        - sản phẩm x số lượng x giá tại thời điểm mu a
+        - sản phẩm 2 x số lượng x giá thời điểm mua 
+    
+    7.1)  bảng Order
+    - id
+    -fullname
+    - email
+    - address
+    - note
+    - phone_number
+    -order_date : time -> thời điểm đặt hàng
+    - status: int -> (pending, approved, ...)
+    7.2) Bảng chi tiết đơn hàng ứng với giỏ hàng sau khi đã hoàn thành chọn sản phẩm 
+    - id: int
+    - 
+
+
+
+
+
+
+
+
+
+
+
+
+

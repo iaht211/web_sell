@@ -1,0 +1,210 @@
+Hàm function:
+    + tính tiền của sản phẩm : p_money(product_id int, pieces int)
+    + tính tổng tiền của sản phẩm trong cart cùng cart_id
+    -- tinh tien cho don hang
+create or replace function p_money(id int)
+returns int
+language plpgsql
+as
+$$
+declare
+	product_money int;
+begin
+	select sum(product.price)
+	from cart join product using(product_id)
+	where cart.cart_id = id;
+end;
+$$;
+    + tính star trung bình cho 1 sản phẩm :
+        create or replace function star_one(id int)
+        returns float
+        language plpgsql
+        as
+        $$
+            declare
+	        avg_star float;
+            begin
+	        select avg(star) into avg_star
+	        from rate
+	        where product_id = id;
+	        return avg_star;
+            end;
+            $$;
+    select star_one(1);
+    select * from rate;
+Hàm procedure:
+    + cập nhật cột tính đánh giá trung bình của sản phẩm 
+    CREATE OR REPLACE PROCEDURE total_star()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	ALTER TABLE product
+	DROP COLUMN IF EXISTS rate_star;
+	
+	ALTER TABLE product
+	ADD COLUMN rate_star FLOAT;
+	
+	UPDATE product AS p
+	SET rate_star = (
+		SELECT AVG(r.star)
+		FROM rate AS r
+		WHERE r.product_id = p.product_id
+	);
+END;
+$$;
+
+CALL total_star();
+select * from product;
+    + thêm cột money cho các sản phẩm trong cart 
+        1. c_money(product_id int, cart_id) thêm tiền vào 1 hàng
+        2. cart_money () thêm tiền vào 1 cột 
+    + thêm cột total money vào bảng order_detail total_money(cart_id int)
+
+Các câu select :
+1. lấy ra sản phẩm có đánh giá trung bình cao nhất trong danh mục sản phẩm có id = 1
+select product.product_id, product.name, product.rate_star
+from product join category using (category_id)
+where category_id = 1
+order by rate_star desc limit 1;
+
+3. liệt kê đơn hàng đang trong trạng thái chờ xác nhận 
+select * from orders join status using (status_id) 
+where status.name = 'Pending';
+
+4. đếm sản phẩm trong các danh mục 
+select category.category_id, category.category_name, count(product.product_id)
+from category join product using(category_id)
+group by (category.category_id);
+
+5. sắp xếp sản phẩm trong danh mục theo thứ tự đánh giá từ cao xuống thấp (dựa trên rate_star) trong 1 danh mục
+select product_id, price, rate_star 
+from product 
+where category_id = 1 
+group by product_id
+order by rate_star desc;
+
+6. sắp xếp đơn hàng theo giá trị từ cao -> thấp của 1 người 
+select orders.order_id, total_money, orders.status_id
+from orders join order_detail using (order_detail_id)
+where orders.user_id = 1
+order by order_detail.total_money desc;
+
+7. tính tổng giá trị tiền đã mua của người dùng
+select orders.user_id, sum(order_detail.total_money) as total_money
+from orders join order_detail using (order_detail_id)
+where orders.user_id = 1
+group by (orders.user_id);
+8. top 5 sản phẩm được mua nhiều nhất (product_id, nam, category_id, lượt mua, price)
+
+select product.product_id, product.name, sum(cart.pieces) as num_buy
+from product join cart using(product_id)
+group by (product.product_id)
+order by num_buy 
+limit 5;
+9. đếm số người dùng admin, 
+
+
+ -- tinh tien cho don hang
+create or replace function p_money(id int)
+returns int
+language plpgsql
+as
+$$
+declare
+	product_money int;
+begin
+	select sum(product.price)
+	from cart join product using(product_id)
+	where cart.cart_id = id;
+end;
+$$;
+-- tính star trung bình cho 1 sản phẩm
+ create or replace function star_one(id int)
+        returns float
+        language plpgsql
+        as
+        $$
+            declare
+	        avg_star float;
+            begin
+	        select avg(star) into avg_star
+	        from rate
+	        where product_id = id;
+	        return avg_star;
+            end;
+            $$;
+-- cập nhật cột tính đánh giá trung bình của sản phẩm 
+CREATE OR REPLACE PROCEDURE total_star()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	ALTER TABLE product
+	DROP COLUMN IF EXISTS rate_star;
+	
+	ALTER TABLE product
+	ADD COLUMN rate_star FLOAT;
+	
+	UPDATE product AS p
+	SET rate_star = (
+		SELECT AVG(r.star)
+		FROM rate AS r
+		WHERE r.product_id = p.product_id
+	);
+END;
+$$;
+-- trigger tính tiền cho sản phẩm khi thực hiện thêm sản phẩm vào cart
+create or replace function calculate_p_money()
+returns trigger 
+language plpgsql
+as $$
+declare
+p_money int;
+begin
+	select (price) into p_money
+	from product 
+	where product_id = new.product;
+	p_money := p_money * new.pieces;
+	update cart
+	set money = p_money
+	where new.cart_id = cart_id;
+	return new;
+end;
+$$;
+create trigger calculate_p_money_trigger
+after insert 
+on cart
+for each row 
+execute procedure calculate_p_money(); 
+--trigger thực hiện không cho phép đăng kí khi trạng thái đơn hàng đã 
+create or replace function check_buy()
+returns trigger
+language plpgsql
+as $$
+declare
+order_status int;
+begin
+	select orders.status_id into order_status from orders
+	join order_detail using (order_detail_id)
+	join cart using (order_detail_id)
+	where cart.cart_id = new.cart_id;
+	if order_status >= 2 then
+	raise exception 'không thể sửa sản phẩm đã mua nữa';
+	end if;
+end;
+$$;
+create trigger check_buy_strigger
+before insert 
+on cart
+for each row 
+execute procedure check_buy();
+
+tạo view để 1 người xem  lịch sử mua hàng 
+
+create view customer_buy as 
+select orders.user_id, orders.order_id, status.name, order_detail.order_detail_id, order_detail.total_money
+from orders join status using (status_id)
+			join order_detail using (order_detail_id)
+group by (orders.order_id, status.name, order_detail.order_detail_id)
+order by (user_id);
+select * from customer_buy;
+
